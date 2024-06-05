@@ -22,19 +22,27 @@ jobs:
         run: echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
 
       - name: Add known hosts
-        run: ssh-keyscan -H ${{ secrets.HOST_DNS }} >> ~/.ssh/known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.HOST_DNS }} >> ~/.ssh/known_hosts || { echo "ssh-keyscan failed"; exit 1; }
+        shell: bash
+
+      - name: Display known hosts for debugging
+        run: cat ~/.ssh/known_hosts
 
       - name: Test SSH connection
-        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }} echo "SSH connection successful"
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }} echo "SSH connection successful" || { echo "SSH connection failed"; exit 1; }
+        shell: bash
 
       - name: Rsync files to server
         run: |
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" ./ ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }}:${{ secrets.TARGET_DIR }}
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" ./ ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }}:${{ secrets.TARGET_DIR }} || { echo "Rsync failed"; exit 1; }
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.HOST_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
           TARGET: ${{ secrets.TARGET_DIR }}
+        shell: bash
 
       - name: Executing remote SSH commands using SSH key
         uses: appleboy/ssh-action@master
