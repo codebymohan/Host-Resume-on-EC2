@@ -21,6 +21,16 @@ jobs:
       - name: Add SSH key
         run: echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
 
+      - name: Ping remote host for network connectivity
+        run: |
+          ping -c 4 ${{ secrets.HOST_DNS }} || { echo "Ping failed"; exit 1; }
+        shell: bash
+
+      - name: Verify DNS resolution
+        run: |
+          nslookup ${{ secrets.HOST_DNS }} || { echo "DNS resolution failed"; exit 1; }
+        shell: bash
+
       - name: Add known hosts
         run: |
           ssh-keyscan -H ${{ secrets.HOST_DNS }} >> ~/.ssh/known_hosts || { echo "ssh-keyscan failed"; exit 1; }
